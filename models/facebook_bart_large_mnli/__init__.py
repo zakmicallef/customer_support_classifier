@@ -27,13 +27,16 @@ def apply_parse_pre_label(classified_results_df: pd.DataFrame):
     classified_results_df['skip'] = classified_results_df['max_score'] < classified_results_df['confidence']
     classified_results_df['predicted'] = classified_results_df.apply(lambda cr_row: cr_row['labels'][cr_row['max_score_arg']], axis=1)
 
-def get_classified_result(text_inputs: pd.Series, candidate_labels):
+def get_pipeline():
     device_index = 0 if torch.cuda.is_available() else -1
-    classifier = pipeline(
+    return pipeline(
         "zero-shot-classification",
         model="facebook/bart-large-mnli",
         device=device_index
     )
+
+def get_classified_result(text_inputs: pd.Series, candidate_labels):
+    classifier = get_pipeline()
     classifier_results = classifier(
         text_inputs.tolist(),
         candidate_labels=candidate_labels
@@ -151,6 +154,3 @@ def run_test(cs_tickets_df: pd.DataFrame):
     labels_w_skip = predicted_skipped_marked.unique()
 
     plot_confusion_matrix(targets, predicted_skipped_marked, labels_w_skip, append_file_name="_filtered_with_skipped")
-
-    exit()
-    # ax2.axis('off')
