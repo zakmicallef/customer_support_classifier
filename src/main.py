@@ -1,4 +1,4 @@
-from api import run_fast
+# from api import run_fast
 from models.facebook_bart_large_mnli import run_test
 from models.facebook_bart_large_mnli.load_model import LoadModel
 from processes.preprocess import preprocess, get_cs_tickets_df

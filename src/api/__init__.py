@@ -1,7 +1,17 @@
 from fastapi import FastAPI, HTTPException
+from db import get_local_session
 from models.facebook_bart_large_mnli.load_model import LoadModel
-from schemas.request_create import RequestCreate
+from schemas.pydantic.request_create import RequestCreate
 from uuid import uuid4
+
+from schemas.pydantic.postgres_config import PostgresSettings
+
+from db.init_tables import init_tables
+from db.requests import add_new_request, update_request
+
+init_tables()
+
+sessionMaker = get_local_session()
 
 model = LoadModel(['technical', 'general', 'billing'])
 
@@ -12,17 +22,16 @@ db = {}
 def create_request(request: RequestCreate):
     # TODO add doc string
 
-    req_id = str(uuid4())
+    session = sessionMaker()
+
+    # make ui uuid ??
+    req_id = add_new_request(request, session)
+
     # TODO Lazy load the querying to the backend 
-    responds = model.query(request.text)
-    db[req_id] = {
-        "id": req_id,
-        "text": request.text or f"{request.subject or ''} {request.body or ''}".strip(),
-        "category": responds.category,  # to be filled by AI later
-        "confidence": responds.confidence, # TODO round this number
-        "summary": responds.summary,
-    }
-    print(db[req_id])
+    # TODO use the subject too
+    responds = model.query(request.content)
+    update_request(req_id, responds, session)
+    
     return {"id": req_id}
 
 # GET /requests/{id}

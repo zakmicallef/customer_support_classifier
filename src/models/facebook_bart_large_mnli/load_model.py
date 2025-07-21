@@ -1,5 +1,5 @@
 from models.facebook_bart_large_mnli import get_pipeline, parse_results
-from schemas.model_response import AiResponse, ZeroShotClassificationResult
+from schemas.pydantic.model_response import AiResponse, ZeroShotClassificationResult
 
 class LoadModel():
     def __init__(self, candidate_labels):

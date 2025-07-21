@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    env_file:
+      - .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  api:
+    env_file:
+      - .env
+    environment:
+      - HF_HOME=/src/app/models
+      - RUNNING_IN_DOCKER=1
+    build:
+      context: src/.              
+      dockerfile: dockerfile # optional if your file is named `Dockerfile`
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf_models:/src/app/models
+    command: ["uv", "run", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+volumes:
+  hf_models:
+  pg_data:

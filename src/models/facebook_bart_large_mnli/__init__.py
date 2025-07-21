@@ -9,11 +9,10 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay,
     classification_report,
 )
-from pydantic import BaseModel
 from typing import List
 import matplotlib.pyplot as plt
 
-from schemas.model_response import AiResponse, ZeroShotClassificationResult
+from schemas.pydantic.model_response import AiResponse, ZeroShotClassificationResult
 
 LIMIT = 100
 
