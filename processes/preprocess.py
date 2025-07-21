@@ -21,6 +21,7 @@ def apply_clean_cs_tickets(df):
 
     # dropping rows that has an empty 
     df = df.dropna(how='any')
+    return df
 
 def apply_parse_data_points(df):
     '''
@@ -61,15 +62,18 @@ def apply_parse_data_points(df):
 
     if df['confidence'].isna().any():
         raise AssertionError('No Nan allowed in "confidence"')
+    return df
 
 def get_cs_tickets_df(clean_data=True, parse_data_points=True):
     df = pd.read_csv("hf://datasets/Tobi-Bueck/customer-support-tickets/dataset-tickets-multi-lang-4-20k.csv")
 
     if clean_data:
-        apply_clean_cs_tickets(df)
+        df = apply_clean_cs_tickets(df)
 
     if parse_data_points:
-        apply_parse_data_points(df)
+        df = apply_parse_data_points(df)
+
+    df.reset_index(inplace=True, drop=True)
 
     return df
 

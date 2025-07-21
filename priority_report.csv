@@ -1,0 +1,4 @@
+priority,all,correct no skip,skipped correct,skipped incorrect,correct,incorrect not skipped,correct skip (%),correct (%),correct precision,unless skip (%)
+high,40,23,17.0,16.0,6,1,40.0,15.0,0.86,42.5
+medium,36,21,0.0,2.0,21,13,5.56,58.33,0.62,0.0
+low,24,13,0.0,0.0,13,11,0.0,54.17,0.54,0.0

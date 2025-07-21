@@ -4,15 +4,24 @@ import argparse
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('-rp', '--run-preprocess', action='store_true', help='Runs preprocessor and save report')
+parser.add_argument('-rc', '--run-call', type=str, help='runs model with a string input')
+parser.add_argument('-rt', '--run-test', action='store_true', help='runs model with a string input')
 args = parser.parse_args()
 
 
 def main():
+    if args.run_preprocess & (args.run_call is not None) & args.run_test:
+        raise ValueError('cant have args together')
+
     if args.run_preprocess:
         preprocess()
 
-    df = get_cs_tickets_df()
-    run_test(df)
+    if args.run_test:
+        df = get_cs_tickets_df()
+        run_test(df)
+
+    if args.run_call:
+        print('running')
 
 if __name__ == "__main__":
     main()
