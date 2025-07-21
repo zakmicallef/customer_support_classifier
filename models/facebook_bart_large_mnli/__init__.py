@@ -13,13 +13,16 @@ from pydantic import BaseModel
 from typing import List
 import matplotlib.pyplot as plt
 
+from schemas.model_response import AiResponse, ZeroShotClassificationResult
+
 LIMIT = 100
 
-class ZeroShotClassificationResult(BaseModel):
-    sequence: str
-    labels: List[str]
-    scores: List[float]
-    predicted: str = None
+def parse_results(results: ZeroShotClassificationResult) -> AiResponse:
+    print(results)
+    predicted = results.labels[results.scores.index(max(results.scores))]
+    score = results.scores[results.scores.index(max(results.scores))]
+    confidence = score/sum(results.scores)
+    return AiResponse(category=predicted, confidence=confidence, summary='')
 
 def apply_parse_pre_label(classified_results_df: pd.DataFrame):
     classified_results_df['max_score'] = classified_results_df['scores'].map(lambda scores: max(scores))
