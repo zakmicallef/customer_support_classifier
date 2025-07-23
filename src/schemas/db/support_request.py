@@ -14,3 +14,4 @@ class SupportRequest(Base):
     summary = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now(), nullable=False)
     resolved_at = Column(DateTime, nullable=True)
+    status = Column(String)

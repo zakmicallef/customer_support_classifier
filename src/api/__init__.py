@@ -9,8 +9,6 @@ from schemas.pydantic.postgres_config import PostgresSettings
 from db.init_tables import init_tables
 from db.requests import add_new_request, update_request, get_request
 
-init_tables()
-
 sessionMaker = get_local_session()
 model = LoadModel(['technical', 'general', 'billing'])
 app = FastAPI()
