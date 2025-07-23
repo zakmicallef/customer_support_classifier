@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from db import get_local_session
 from models.facebook_bart_large_mnli.load_model import LoadModel
 from schemas.pydantic.request_create import RequestCreate
@@ -18,8 +18,15 @@ model = LoadModel(['technical', 'general', 'billing'])
 app = FastAPI()
 db = {}
 
+def process_ai_request(req_id, request):
+    session = sessionMaker()
+    # TODO Lazy load the querying to the backend 
+    # TODO use the subject too
+    responds = model.query(request.content)
+    update_request(req_id, responds, session)
+
 @app.post("/requests")
-def create_request(request: RequestCreate):
+def create_request(request: RequestCreate, background_tasks: BackgroundTasks):
     # TODO add doc string
 
     session = sessionMaker()
@@ -27,10 +34,7 @@ def create_request(request: RequestCreate):
     # make ui uuid ??
     req_id = add_new_request(request, session)
 
-    # TODO Lazy load the querying to the backend 
-    # TODO use the subject too
-    responds = model.query(request.content)
-    update_request(req_id, responds, session)
+    background_tasks.add_task(process_ai_request, req_id, request)
     
     return {"id": req_id}
 
