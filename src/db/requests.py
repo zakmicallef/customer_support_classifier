@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import update
 from schemas.db.support_request import SupportRequest
 from schemas.pydantic.model_response import AiResponse
-from schemas.pydantic.request_create import RequestCreate
+from schemas.pydantic.request import RequestCreate
 
 def add_new_request(request: RequestCreate, session):
     # Create a new request
@@ -39,3 +39,6 @@ def update_request(id_, response: AiResponse, session):
     )
     session.execute(stmt)
     session.commit()
+
+def get_request(id, session):
+    return session.get(SupportRequest, id)
