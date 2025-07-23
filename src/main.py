@@ -4,11 +4,14 @@ from models.facebook_bart_large_mnli.load_model import LoadModel
 from processes.preprocess import preprocess, get_cs_tickets_df
 import argparse
 
+from models.rag import Rag
+
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('-rp', '--run-preprocess', action='store_true', help='Runs preprocessor and save report')
 parser.add_argument('-rc', '--run-call', type=str, help='runs model with a string input')
 parser.add_argument('-rt', '--run-test', action='store_true', help='runs model with a string input')
 parser.add_argument('-rs', '--run-service', action='store_true', help='runs the api')
+parser.add_argument('-ri', '--run-ingestion', action='store_true', help='runs the ingestion')
 args = parser.parse_args()
 
 def main():
@@ -29,6 +32,13 @@ def main():
 
     # if args.run_service:
     #     run_fast()
+
+    if args.run_ingestion:
+        df = get_cs_tickets_df()
+        rag = Rag()
+        rag.ingest(df)
+        print(df['body'].iloc[-1])
+        rag.query(df['body'].tail(1).to_list())
 
 if __name__ == "__main__":
     main()

@@ -17,7 +17,6 @@ from schemas.pydantic.model_response import AiResponse, ZeroShotClassificationRe
 LIMIT = 100
 
 def parse_results(results: ZeroShotClassificationResult) -> AiResponse:
-    print(results)
     predicted = results.labels[results.scores.index(max(results.scores))]
     score = results.scores[results.scores.index(max(results.scores))]
     confidence = score/sum(results.scores)
