@@ -59,7 +59,7 @@ class Rag(Model):
         self.embedder = LongFormer()
 
     def ingest(self):
-        dataset_df, documents = get_dataset()
+        dataset_df, documents = get_dataset(train=True)
         documents = documents.tolist()
 
         # TODO replace with db index

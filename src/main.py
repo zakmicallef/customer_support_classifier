@@ -2,9 +2,7 @@
 from processes.test import run_test
 from models.facebook_bart_large_mnli import MnliModel
 from processes.ingest import ingest
-from processes.preprocess import preprocess
 import argparse
-
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('-rp', '--run-preprocess', action='store_true', help='Runs preprocessor and save report')
@@ -19,7 +17,7 @@ def main():
         raise ValueError('cant have args together')
 
     if args.run_preprocess:
-        preprocess()
+        pass
 
     if args.run_test:
         run_test()

@@ -1,6 +1,5 @@
 import math
 from models.rag import Rag
-from processes.preprocess import get_cs_tickets_df
 from util.load_configs import load_data_config
 
 
