@@ -1,7 +1,5 @@
 import numpy as np
 import pandas as pd
-from transformers import pipeline
-from loguru import logger
 import torch
 from sklearn.metrics import (
     accuracy_score,
@@ -14,35 +12,12 @@ import matplotlib.pyplot as plt
 
 from schemas.pydantic.model_response import AiResponse, ZeroShotClassificationResult
 
-LIMIT = 100
-
 def parse_results(results: ZeroShotClassificationResult) -> AiResponse:
     predicted = results.labels[results.scores.index(max(results.scores))]
     score = results.scores[results.scores.index(max(results.scores))]
-    confidence = score/sum(results.scores)
+    confidence = score/sum(results.scores) # TODO ??
     return AiResponse(category=predicted, confidence=confidence, summary='')
 
-def apply_parse_pre_label(classified_results_df: pd.DataFrame):
-    classified_results_df['max_score'] = classified_results_df['scores'].map(lambda scores: max(scores))
-    classified_results_df['max_score_arg'] = classified_results_df['scores'].map(lambda scores: np.argmax(scores))
-    classified_results_df['skip'] = classified_results_df['max_score'] < classified_results_df['confidence']
-    classified_results_df['predicted'] = classified_results_df.apply(lambda cr_row: cr_row['labels'][cr_row['max_score_arg']], axis=1)
-
-def get_pipeline():
-    device_index = 0 if torch.cuda.is_available() else -1
-    return pipeline(
-        "zero-shot-classification",
-        model="facebook/bart-large-mnli",
-        device=device_index
-    )
-
-def get_classified_result(text_inputs: pd.Series, candidate_labels):
-    classifier = get_pipeline()
-    classifier_results = classifier(
-        text_inputs.tolist(),
-        candidate_labels=candidate_labels
-    )
-    return pd.DataFrame(classifier_results)
 
 def plot_custom_confusion_matrix(cm, true_labels, pred_labels, title="Confusion Matrix", filename=None):
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -105,53 +80,4 @@ def save_report(targets, predicted, labels, skipped=None, append_file_name=""):
         report_df = pd.concat([report_df, skipped], axis=1)
     report_df.to_csv(f"report{append_file_name}.csv")
 
-def save_priority_report(classified_tickets_df):
-    value_c_all = classified_tickets_df['priority'].value_counts().rename('all')
-    classified_tickets_df['correct'] = classified_tickets_df['predicted'] == classified_tickets_df['target']
-    value_c_correct_w_skips = classified_tickets_df[(classified_tickets_df['correct']) & (~classified_tickets_df['skip'])]['priority'].value_counts().rename("correct")
-    value_c_skipped_correct = classified_tickets_df[(classified_tickets_df['correct']) & (classified_tickets_df['skip'])]['priority'].value_counts().rename("skipped correct")
-    value_c_skipped_incorrect = classified_tickets_df[(~classified_tickets_df['correct']) & (classified_tickets_df['skip'])]['priority'].value_counts().rename("skipped incorrect")
-    value_c_incorrect_w_skip = classified_tickets_df[(~classified_tickets_df['correct']) & (~classified_tickets_df['skip'])]['priority'].value_counts().rename("incorrect not skipped")
 
-    value_c_correct = classified_tickets_df[classified_tickets_df['predicted'] == classified_tickets_df['target']]['priority'].value_counts().rename('correct no skip')
-    values = pd.concat([value_c_all, value_c_correct, value_c_skipped_correct, value_c_skipped_incorrect, value_c_correct_w_skips, value_c_incorrect_w_skip], axis=1)
-    values.fillna(0, inplace=True)
-
-    values['correct skip (%)'] = ((values['skipped incorrect']/values['all'])*100).round(2)
-    values['correct (%)'] = ((values['correct']/values['all'])*100).round(2)
-    values['correct precision'] = (values['correct']/(values['incorrect not skipped']+values['correct'])).round(2)
-    values['unless skip (%)'] = ((values['skipped correct']/values['all'])*100).round(2)
-    values.to_csv('priority_report.csv')
-   
-def run_test(cs_tickets_df: pd.DataFrame):
-    cs_tickets_df = cs_tickets_df.head(LIMIT)
-    targets = cs_tickets_df['target']
-    labels = targets.unique()
-    text = cs_tickets_df['body']
-
-    logger.info(f'Targets for zero-shot learning: {labels}')
-    classifier_results_df = get_classified_result(text, labels)
-
-    classified_tickets_df = pd.concat([cs_tickets_df, classifier_results_df], axis=1)
-    apply_parse_pre_label(classified_tickets_df)
-    save_priority_report(classified_tickets_df)
-
-    predicted = classified_tickets_df['predicted']
-
-    targets_filtered = targets[~classified_tickets_df['skip']]
-    predicted_filtered = predicted[~classified_tickets_df['skip']]
-
-    # Saving reports of how the model labels are doing
-    save_report(targets, predicted, labels, append_file_name="")
-    value_count_skips_target = (classified_tickets_df[['target', 'skip']].value_counts().xs(True, level=1)/len(predicted)).rename('skip factor')
-    save_report(targets_filtered, predicted_filtered, labels, value_count_skips_target, append_file_name="_filtered")
-
-    # Plotting Confusion Matrix
-    plot_confusion_matrix(targets, predicted, labels)
-    plot_confusion_matrix(targets_filtered, predicted_filtered, labels, append_file_name="_filtered")
-
-    predicted_skipped_marked = predicted.copy()
-    predicted_skipped_marked[classified_tickets_df['skip']] = 'skip'
-    labels_w_skip = predicted_skipped_marked.unique()
-
-    plot_confusion_matrix(targets, predicted_skipped_marked, labels_w_skip, append_file_name="_filtered_with_skipped")

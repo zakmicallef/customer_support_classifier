@@ -1,6 +1,6 @@
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from db import get_local_session
-from models.facebook_bart_large_mnli.load_model import LoadModel
+from models.facebook_bart_large_mnli.load_model import MnliModel
 from schemas.pydantic.request import RequestCreate, RequestResponse
 from uuid import uuid4
 
@@ -10,7 +10,7 @@ from db.init_tables import init_tables
 from db.requests import add_new_request, update_request, get_request
 
 sessionMaker = get_local_session()
-model = LoadModel(['technical', 'general', 'billing'])
+model = MnliModel(['technical', 'general', 'billing'])
 app = FastAPI()
 
 def process_ai_request(req_id, request):

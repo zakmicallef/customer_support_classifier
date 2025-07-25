@@ -1,0 +1,4 @@
+priority_model: 'MNLI'
+queue_model: 'RAGLF'
+priority_stop: False
+rag_store_name: 'main'

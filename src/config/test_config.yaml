@@ -1,0 +1,4 @@
+priority_model_name: 'MNLI'
+queue_model_name: 'MNLI'
+rag_store_name: 'main'
+test_factor: 0.1

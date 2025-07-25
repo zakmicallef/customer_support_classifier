@@ -1,6 +1,6 @@
 # from api import run_fast
-from models.facebook_bart_large_mnli import run_test
-from models.facebook_bart_large_mnli.load_model import LoadModel
+from models import run_test
+from models.facebook_bart_large_mnli.load_model import MnliModel
 from processes.preprocess import preprocess, get_cs_tickets_df
 import argparse
 
@@ -22,11 +22,10 @@ def main():
         preprocess()
 
     if args.run_test:
-        df = get_cs_tickets_df()
-        run_test(df)
+        run_test()
 
     if args.run_call:
-        model = LoadModel(['technical', 'general', 'billing'])
+        model = MnliModel()
         result = model.query(args.run_call)
         print(result)
 
@@ -37,8 +36,8 @@ def main():
         df = get_cs_tickets_df()
         rag = Rag()
         rag.ingest(df)
-        print(df['body'].iloc[-1])
-        rag.query(df['body'].tail(1).to_list())
+        # print(df['body'].iloc[-1])
+        # rag.query(df['body'].tail(1).to_list())
 
 if __name__ == "__main__":
     main()
