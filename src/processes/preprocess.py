@@ -28,7 +28,6 @@ def apply_parse_data_points(df):
     This adds the data point needed to implement models 
     '''
 
-
     TECHNICAL = 'technical'
     BILLING = 'billing'
     GENERAL = 'general'
@@ -46,22 +45,11 @@ def apply_parse_data_points(df):
         'Returns and Exchanges': GENERAL,
         'General Inquiry': GENERAL
     }
-    df['target'] = df['queue'].map(queue_map)
+    df['queue'] = df['queue'].map(queue_map)
 
-    if df['target'].isna().any():
+    if df['queue'].isna().any():
         raise AssertionError('No Nan allowed in "target"')
 
-
-    # map parse priority to float
-    confidence_map = {
-        'low': 0.1,
-        'medium': 0.5,
-        'high': 0.95
-    }
-    df['confidence'] = df['priority'].map(confidence_map)
-
-    if df['confidence'].isna().any():
-        raise AssertionError('No Nan allowed in "confidence"')
     return df
 
 def get_cs_tickets_df(clean_data=True, parse_data_points=True):
@@ -81,7 +69,6 @@ def get_cs_tickets_df(clean_data=True, parse_data_points=True):
 def apply_charts(cs_tickets_df, save=True):
     # getting target probabilities
     target_probs = cs_tickets_df['target'].value_counts(normalize=True).round(2)
-
 
     size = 3
     fig = plt.figure(figsize=(10, 18))

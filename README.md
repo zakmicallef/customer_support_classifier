@@ -22,4 +22,7 @@ Test execution (pytest)
 Environment variable configuration
 
 Write about CLI
+
+
+mention dask
 -->

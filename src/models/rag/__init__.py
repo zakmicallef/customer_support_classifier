@@ -1,19 +1,13 @@
 from typing import List
 from loguru import logger
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from transformers import pipeline
+import pandas as pd
 import chromadb
-from chromadb.config import Settings
-
-
-# name of collection
-# input
-# target
-# collection
 
 from transformers import AutoTokenizer, AutoModel
 import torch
+
+from db.dataset import get_dataset
+from models.model import Model
 
 class LongFormer():
     def __init__(self):
@@ -38,91 +32,75 @@ class LongFormer():
 
             with torch.no_grad():
                 outputs = self.model(**inputs)
-                last_hidden_state = outputs.last_hidden_state  # [batch, seq_len, hidden]
+                last_hidden_state = outputs.last_hidden_state
 
             attention_mask = inputs['attention_mask']
             mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
             embedding = (last_hidden_state * mask_expanded).sum(1) / mask_expanded.sum(1)
-            embeddings.append(embedding.squeeze(0))  # shape [hidden_size]
+            embeddings.append(embedding.squeeze(0))
 
-        return torch.stack(embeddings)  # shape [batch_size, hidden_size]
+        return torch.stack(embeddings)
 
-# class 
-# 3. Load embedding model
-# embedder = SentenceTransformer('all-MiniLM-L6-v2')
-# embeddings = embedder.encode(documents).tolist()
+class Rag(Model):
+    def __init__(self, target=None, name="rag-store", persistent=False, chroma_file_name=None):
+        self.target = target
 
-# ...
+        if not chroma_file_name:
+            chroma_file_name = 'default'
 
-# query = "What is FastAPI used for?"
-# query_embedding = embedder.encode([query]).tolist()[0]
-
-# print(results)
-
-    pass
-
-LIMIT = 100
-class Rag():
-    def __init__(self, name="rag-demo", persistent=False):
         if persistent:
-            self.chroma_client = chromadb.PersistentClient(
-                path=f'.',
-            )
+            self.path_ = f'./chroma/{chroma_file_name}/'
+            logger.info(f'Loading Chroma from {self.path_}')
+            self.chroma_client = chromadb.PersistentClient(path = self.path_)
         else:
             self.chroma_client = chromadb.Client()
-        self.collection = self.chroma_client.get_or_create_collection(name=name)
 
+        self.collection = self.chroma_client.get_or_create_collection(name=name)
         self.embedder = LongFormer()
 
-    def ingest(self, dataset_df):
-        dataset_df = dataset_df.head(LIMIT)
+    def ingest(self):
+        dataset_df, documents = get_dataset()
+        documents = documents.tolist()
 
-        documents = dataset_df['body'].tolist()
         # TODO replace with db index
         ids = [f"doc{i}" for i in range(len(dataset_df))]
-        dataset_df['join'] = dataset_df[['priority', 'target']].to_dict(orient='records')
-        metas = dataset_df['join'].tolist()
+        metadatas = dataset_df[['priority', 'queue']].to_dict(orient='records')
 
         logger.info("Starting Processing embeddings")
         embeddings = self.embedder.encode(documents).tolist()
 
         # TODO add priority and service as metas
         logger.info("Starting adding to Collection")
-        self.collection.add(documents=documents, embeddings=embeddings, metadatas=metas, ids=ids)
+        self.collection.add(documents=documents, embeddings=embeddings, metadatas=metadatas, ids=ids)
 
-    def query(self, texts): # List[AiResponse]
+    # def query(self, texts): # List[AiResponse]
+
+    def classifier(self, texts):
+        if not self.target:
+            raise TypeError('target must be specified to classify')
+
+        results__ = []
+
         logger.info(f"Loading embedding for {len(texts)} texts")
         embeddings = self.embedder.encode(texts).tolist()
         logger.info(f"Loading results for {len(texts)} texts")
+        
         results = self.collection.query(query_embeddings=embeddings, n_results=1)
-        print(results)
 
+        documents = results['documents']
+        metadatas = results['metadatas']
 
+        for text, document, metadata in zip(texts, documents, metadatas):
+            if len(document) == 0:
+                predicted = None
+            else:
+                metadata = metadata[0]
+                predicted = metadata[self.target]
 
-{
-    'ids': [['doc55']], 
-    'embeddings': None,
-    'documents': [
-        ['Our project management SaaS application is encountering functionality problems across multiple devices. It appears recent updates or integration conflicts might be the cause. We have already tried clearing the cache, reinstalling the application, and checking for updates, but the issue still persists. We need assistance to resolve this problem.']
-    ],
-    'uris': None,
-    'included': ['metadatas', 'documents', 'distances'],
-    'data': None,
-    'metadatas': [
-        [
-            {'target': 'technical', 'priority': 'high'}
-        ]
-        ], 'distances': [[2.589689016342163]
-    ]
-}
-
-
-
-
-# retrieved_doc = results['documents'][0][0]
-# # 7. Generate answer using a language model
-# generator = pipeline("text2text-generation", model="google/flan-t5-base")
-# context = f"Context: {retrieved_doc}\nQuestion: {query}"
-# answer = generator(context, max_new_tokens=100)[0]['generated_text']
-# print("Question:", query)
-# print("Answer:", answer)
+            results__.append({
+                'sequence': text,
+                'max_score': None, # TODO find the max distance for all the results to normalize the score/confidence
+                'predicted': predicted
+            })
+        
+        return pd.DataFrame(results__)

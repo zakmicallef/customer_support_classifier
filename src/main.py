@@ -1,10 +1,10 @@
 # from api import run_fast
-from models import run_test
-from models.facebook_bart_large_mnli.load_model import MnliModel
-from processes.preprocess import preprocess, get_cs_tickets_df
+from processes.test import run_test
+from models.facebook_bart_large_mnli import MnliModel
+from processes.ingest import ingest
+from processes.preprocess import preprocess
 import argparse
 
-from models.rag import Rag
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('-rp', '--run-preprocess', action='store_true', help='Runs preprocessor and save report')
@@ -33,11 +33,8 @@ def main():
     #     run_fast()
 
     if args.run_ingestion:
-        df = get_cs_tickets_df()
-        rag = Rag()
-        rag.ingest(df)
-        # print(df['body'].iloc[-1])
-        # rag.query(df['body'].tail(1).to_list())
+        ingest()
+
 
 if __name__ == "__main__":
     main()

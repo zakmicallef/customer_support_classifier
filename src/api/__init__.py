@@ -1,6 +1,6 @@
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from db import get_local_session
-from models.facebook_bart_large_mnli.load_model import MnliModel
+from models.facebook_bart_large_mnli import MnliModel
 from schemas.pydantic.request import RequestCreate, RequestResponse
 from uuid import uuid4
 
@@ -15,7 +15,6 @@ app = FastAPI()
 
 def process_ai_request(req_id, request):
     session = sessionMaker()
-    # TODO Lazy load the querying to the backend 
     # TODO use the subject too
     responds = model.query(request.content)
     update_request(req_id, responds, session)
