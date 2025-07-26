@@ -13,6 +13,10 @@ class LiveConfig(BaseModel):
 
     priority_model_name: str
     queue_model_name: str
+    confidence_on_low: float
+    confidence_on_medium: float
+    confidence_on_high: float
+
     priority_stop: bool
 
 class TestConfig(BaseModel):

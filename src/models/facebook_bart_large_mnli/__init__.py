@@ -27,6 +27,8 @@ class MnliModel(Model):
             self.candidate_labels = ['high','medium','low'] # TODO check to fix
         elif target == 'queue':
             self.candidate_labels = ['technical', 'general', 'billing']
+        else:
+            raise ValueError(f"Unknown target: {target}")
 
     def query(self, text_input) -> AiResponse:
         result = ZeroShotClassificationResult(**self.classifier(

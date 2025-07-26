@@ -26,6 +26,7 @@ def main():
         run_test()
 
     if args.run_call:
+        raise NotImplementedError('Run call is needs to be updated')
         model = MnliModel()
         result = model.query(args.run_call)
         print(result)

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 class ZeroShotClassificationResult(BaseModel):
@@ -8,5 +8,5 @@ class ZeroShotClassificationResult(BaseModel):
 
 class AiResponse(BaseModel):
     category: str
-    confidence: float
-    summary: str
+    confidence: Optional[float] = None
+    summary: Optional[str] = None

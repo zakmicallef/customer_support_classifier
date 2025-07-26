@@ -9,6 +9,7 @@ import torch
 from db import get_session_maker_and_engine
 from db.dataset import get_dataset
 from models.model import Model
+from schemas.pydantic.model_response import AiResponse
 
 class LongFormer():
     def __init__(self):
@@ -97,7 +98,23 @@ class Rag(Model):
         embeddings = self.embedder.encode(documents).tolist()
         self.collection.add(documents=documents, embeddings=embeddings, metadatas=metadatas, ids=ids)
 
-    # def query(self, texts): # List[AiResponse]
+    def query(self, text) -> AiResponse:
+        if not self.target:
+            raise TypeError('target must be specified to query')
+        logger.info(f"Loading embedding for text: {text}")
+        embeddings= self.embedder.encode([text]).tolist()
+        results = self.collection.query(query_embeddings=embeddings[0], n_results=1)
+        documents = results['documents'][0][0]
+        metadatas = results['metadatas'][0][0]
+
+        if len(documents) == 0:
+            predicted = None
+        else:
+            predicted = metadatas[self.target]
+
+        return AiResponse(
+            category=predicted
+        )
 
     def classifier(self, texts):
         if not self.target:

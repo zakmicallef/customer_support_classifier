@@ -1,4 +1,6 @@
-priority_model: 'MNLI'
-queue_model: 'RAGLF'
+priority_model_name: 'MNLI'
+queue_model_name: 'RAGLF'
 priority_stop: False
-rag_store_name: 'main'
+confidence_on_low: 0.1
+confidence_on_medium: 0.5
+confidence_on_high: 0.95

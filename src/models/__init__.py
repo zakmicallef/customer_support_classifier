@@ -1,10 +1,10 @@
 from models.facebook_bart_large_mnli import MnliModel
 from models.rag import Rag
 from models.model import Model
-from schemas.pydantic.run_configs import TestConfig
+from schemas.pydantic.run_configs import LiveConfig, TestConfig
 from util.load_configs import load_data_config
 
-def get_model(config: TestConfig) -> tuple[Model, Model]:
+def get_model(config: TestConfig | LiveConfig) -> tuple[Model, Model]:
     # TODO make model names and targets to enums
     if config.priority_model_name == 'MNLI':
         priority_model = MnliModel(target='priority')
