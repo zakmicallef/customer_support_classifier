@@ -1,11 +1,11 @@
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from db import get_local_session
+from db import get_session_maker
 from models.facebook_bart_large_mnli import MnliModel
 from schemas.pydantic.request import RequestCreate, RequestResponse
 
 from db.requests import add_new_request, update_request, get_request
 
-sessionMaker = get_local_session()
+sessionMaker = get_session_maker()
 model = MnliModel(['technical', 'general', 'billing'])
 app = FastAPI()
 

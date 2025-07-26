@@ -6,6 +6,7 @@ import chromadb
 from transformers import AutoTokenizer, AutoModel
 import torch
 
+from db import get_session_maker_and_engine
 from db.dataset import get_dataset
 from models.model import Model
 
@@ -58,19 +59,42 @@ class Rag(Model):
         self.collection = self.chroma_client.get_or_create_collection(name=name)
         self.embedder = LongFormer()
 
-    def ingest(self):
-        dataset_df, documents = get_dataset(train=True)
-        documents = documents.tolist()
+    def reset(self):
+        logger.warning("Ingesting data will delete the collection if it exists")
+        self.chroma_client.delete_collection(name=self.collection.name)
+        self.collection = self.chroma_client.get_or_create_collection(name=self.collection.name)
 
-        # TODO replace with db index
-        ids = [f"doc{i}" for i in range(len(dataset_df))]
+    def ingest(self):
+        # TODO ask on cli or have args to see if the collection should be deleted or skip the ingestion
+        self.reset()
+
+        logger.info("Starting ingesting data")
+        session_maker, engine = get_session_maker_and_engine()
+        session = session_maker()
+        dataset_df = get_dataset(engine, session, set='train')
+
+        logger.info(f"Dataset loaded with {len(dataset_df)} records")
+
+        ids = dataset_df['id'].astype(str).tolist()
+        documents = dataset_df['body'].tolist()
         metadatas = dataset_df[['priority', 'queue']].to_dict(orient='records')
 
-        logger.info("Starting Processing embeddings")
-        embeddings = self.embedder.encode(documents).tolist()
+        logger.info(f"Starting Processing {len(documents)} documents")
 
-        # TODO add priority and service as metas
-        logger.info("Starting adding to Collection")
+        # batching the documents as it crashes with too many documents (on my pc)
+        batch_size = 100
+        for i in range(0, len(dataset_df), batch_size):
+            batch_documents = documents[i:i+batch_size]
+            batch_metadatas = metadatas[i:i+batch_size]
+            batch_ids = ids[i:i+batch_size]
+
+            logger.info(f"Processing batch {i//batch_size + 1} with {len(batch_documents)} documents")
+            self._add_to_collection(batch_documents, batch_metadatas, batch_ids)
+
+        logger.info("Ingesting data finished")
+
+    def _add_to_collection(self, documents, metadatas, ids):
+        embeddings = self.embedder.encode(documents).tolist()
         self.collection.add(documents=documents, embeddings=embeddings, metadatas=metadatas, ids=ids)
 
     # def query(self, texts): # List[AiResponse]

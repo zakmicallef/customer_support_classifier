@@ -6,9 +6,9 @@ import uuid
 
 def save_report(targets, predicted, labels, skipped=None, append_file_name="", file_name=None):
     if not file_name:
-        file_location=f"test_results/{uuid.uuid4()}"
+        file_location=f"test_results/{uuid.uuid4()}/"
     else:
-        file_location=f"test_results/{file_name}"
+        file_location=f"test_results/{file_name}/"
         # TODO ask on cli if test wants to be replaced
     os.makedirs(file_location, exist_ok=True)
 

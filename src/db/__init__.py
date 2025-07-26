@@ -7,6 +7,11 @@ from sqlalchemy.orm import sessionmaker
 def get_engine():
     return create_engine(PostgresSettings().db_url)
 
-def get_local_session():
+def get_session_maker():
     engine = get_engine()
     return sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_session_maker_and_engine():
+    engine = get_engine()
+    Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    return Session, engine

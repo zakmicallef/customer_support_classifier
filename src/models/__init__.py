@@ -1,4 +1,3 @@
-import numpy as np
 from models.facebook_bart_large_mnli import MnliModel
 from models.rag import Rag
 from models.model import Model

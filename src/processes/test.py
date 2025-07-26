@@ -1,3 +1,5 @@
+from loguru import logger
+from db import get_session_maker_and_engine
 from db.dataset import get_dataset
 from models import get_model
 from models.charts_reports import save_report, apply_charts
@@ -26,20 +28,26 @@ def get_target_and_predicted_results(queue_results_df, priority_results_df, cs_t
     return queue_targets, queue_predicted, all_labels
 
 def run_test():
+    logger.info("Starting ingesting data")
+
     config: TestConfig = load_test_config()
-    cs_tickets_df, texts = get_dataset()
+    session_maker, engine = get_session_maker_and_engine()
+    session = session_maker()
+    dataset_df = get_dataset(engine, session, set='test')
 
-    apply_charts(cs_tickets_df, file_name=config.test_name)
+    # TODO Re implement this for the whole dataset
+    # apply_charts(dataset_df, file_name=config.test_name)
 
-    priority_labels = cs_tickets_df['priority'].unique().tolist()
-    queue_labels = cs_tickets_df['queue'].unique().tolist()
+    texts = dataset_df['body']
+    priority_labels = dataset_df['priority'].unique().tolist()
+    queue_labels = dataset_df['queue'].unique().tolist()
     priority_model, queue_model = get_model(config)
 
     priority_results_df = priority_model.classifier(texts)
     queue_results_df = queue_model.classifier(texts)
 
     save_report(
-        cs_tickets_df['queue'],
+        dataset_df['queue'],
         queue_results_df['predicted'],
         queue_labels,
         skipped=None,
@@ -47,7 +55,7 @@ def run_test():
         file_name=config.test_name
     )
     save_report(
-        cs_tickets_df['priority'],
+        dataset_df['priority'],
         priority_results_df['predicted'],
         priority_labels,
         skipped=None,
@@ -55,7 +63,7 @@ def run_test():
         file_name=config.test_name
     )
 
-    queue_targets, queue_predicted, all_labels = get_target_and_predicted_results(queue_results_df, priority_results_df, cs_tickets_df, config)
+    queue_targets, queue_predicted, all_labels = get_target_and_predicted_results(queue_results_df, priority_results_df, dataset_df, config)
 
     save_report(
         queue_targets,

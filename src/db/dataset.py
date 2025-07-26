@@ -1,92 +1,121 @@
 # TODO Move to a better place
+from loguru import logger
 import pandas as pd
 from schemas.db.customer_support_dataset import Language, Priority, Queue, Tag, Ticket
 from util.load_configs import load_data_config
-from loguru import logger
 import math
 
+import pandas as pd
+import math
+from sqlalchemy import select, func
+from schemas.db.customer_support_dataset import Ticket, Priority, Queue, Language, Tag, ticket_tags
 
-def apply_parse_data_points(df):
-    '''
-    This adds the data point needed to implement models 
-    '''
-
-    TECHNICAL = 'technical'
-    BILLING = 'billing'
-    GENERAL = 'general'
-
-    # map queue
-    queue_map = {
-        'Technical Support': TECHNICAL,
-        'IT Support': TECHNICAL,
-        'Billing and Payments': BILLING,
-        'Customer Service': GENERAL,
-        'Product Support': GENERAL,
-        'Service Outages and Maintenance': GENERAL,
-        'Human Resources': GENERAL,
-        'Sales and Pre-Sales': GENERAL,
-        'Returns and Exchanges': GENERAL,
-        'General Inquiry': GENERAL
-    }
-    df['queue'] = df['queue'].map(queue_map)
-
-    if df['queue'].isna().any():
-        raise AssertionError('No Nan allowed in "target"')
-
-    return df
-
-
-def apply_clean_cs_tickets(df):
-    '''
-    This removes unwanted data to keep the dataset clean
-    '''
-
-    # dropping german rows
-    # german = df['language'] == 'de'
-
-    # df = df[~german]
-
-    # # removing unwanted cols
-    # columns = df.columns.tolist()
-    # columns_keep = ['subject', 'body', 'priority', 'queue']
-
-    # drop_columns = [c for c in columns if c not in columns_keep]
-
-    # df = df.drop(columns=drop_columns)
-
-    # dropping rows that has an empty 
-    df = df.dropna(how='any')
-    return df
-
-
-def get_cs_tickets_df(clean_data=True, parse_data_points=True):
-    df = pd.read_csv("hf://datasets/Tobi-Bueck/customer-support-tickets/dataset-tickets-multi-lang-4-20k.csv")
-
-    if clean_data:
-        df = apply_clean_cs_tickets(df)
-
-    if parse_data_points:
-        df = apply_parse_data_points(df)
-
-    df.reset_index(inplace=True, drop=True)
-
-    return df
-
-def get_dataset(train=False):
+def get_dataset(engine, session, set='train', tags=False, language='en'):
+    logger.info(f"Getting dataset for set: {set}, language: {language}, tags: {tags}")
     config = load_data_config()
-    cs_tickets_df = get_cs_tickets_df()
 
-    len_of_dataset = cs_tickets_df.shape[0]
+    if tags:
+        tag_subquery = (
+            select(
+                ticket_tags.c.ticket_id.label("ticket_id"),
+                func.array_agg(Tag.name).label("tags")
+            )
+            .join(Tag, Tag.id == ticket_tags.c.tag_id)
+            .group_by(ticket_tags.c.ticket_id)
+            .subquery()
+        )
 
-    if train:
-        cs_tickets_df = cs_tickets_df[:-math.floor(len_of_dataset*config.test_factor)]
+        if language != 'all':
+            base_query = (
+                select(
+                    Ticket.id,
+                    Ticket.subject,
+                    Ticket.body,
+                    Ticket.answer,
+                    Ticket.type,
+                    Priority.name.label("priority"),
+                    Queue.name.label("queue"),
+                    Language.name.label("language"),
+                    tag_subquery.c.tags
+                )
+                .outerjoin(Priority, Ticket.priority_id == Priority.id)
+                .outerjoin(Queue, Ticket.queue_id == Queue.id)
+                .outerjoin(Language, Ticket.language_id == Language.id)
+                .outerjoin(tag_subquery, tag_subquery.c.ticket_id == Ticket.id)
+                .where(Language.name == language)
+            )
+        else:
+            base_query = (
+                select(
+                    Ticket.id,
+                    Ticket.subject,
+                    Ticket.body,
+                    Ticket.answer,
+                    Ticket.type,
+                    Priority.name.label("priority"),
+                    Queue.name.label("queue"),
+                    Language.name.label("language"),
+                    tag_subquery.c.tags
+                )
+                .outerjoin(Priority, Ticket.priority_id == Priority.id)
+                .outerjoin(Queue, Ticket.queue_id == Queue.id)
+                .outerjoin(Language, Ticket.language_id == Language.id)
+                .outerjoin(tag_subquery, tag_subquery.c.ticket_id == Ticket.id)
+            )
     else:
-        cs_tickets_df = cs_tickets_df[math.floor(len_of_dataset*config.test_factor):]
+        if language != 'all':
+            base_query = (
+                select(
+                    Ticket.id,
+                    Ticket.subject,
+                    Ticket.body,
+                    Ticket.answer,
+                    Ticket.type,
+                    Priority.name.label("priority"),
+                    Queue.name.label("queue"),
+                    Language.name.label("language")
+                )
+                .outerjoin(Priority, Ticket.priority_id == Priority.id)
+                .outerjoin(Queue, Ticket.queue_id == Queue.id)
+                .outerjoin(Language, Ticket.language_id == Language.id)
+                .where(Language.name == language)
+            )
+        else:
+            base_query = (
+                select(
+                    Ticket.id,
+                    Ticket.subject,
+                    Ticket.body,
+                    Ticket.answer,
+                    Ticket.type,
+                    Priority.name.label("priority"),
+                    Queue.name.label("queue"),
+                    Language.name.label("language")
+                )
+                .outerjoin(Priority, Ticket.priority_id == Priority.id)
+                .outerjoin(Queue, Ticket.queue_id == Queue.id)
+                .outerjoin(Language, Ticket.language_id == Language.id)
+            )
 
-    texts = cs_tickets_df['body']
+    if set != 'all':
+        if language == 'all':
+            total = session.query(func.count(Ticket.id)).scalar()
+        else:
+            total = session.query(func.count(Ticket.id))\
+                .join(Language, Ticket.language_id == Language.id)\
+                .filter(Language.name == language)\
+                .scalar()
 
-    logger.info(f'Data loaded for testing')
-    return cs_tickets_df, texts
+        split_index = math.floor(total * config.test_factor)
+        
+        if set == 'train':
+            query = base_query.limit(total - split_index).offset(0)
+        else:
+            query = base_query.limit(split_index).offset(total - split_index)
+
+        logger.info(f"Total records: {total}, Split index: {split_index}, offset: {total - split_index}")
+
+    return pd.read_sql_query(query, con=engine)
 
 def get_or_create(model, name, cache, session):
     if pd.isna(name):
