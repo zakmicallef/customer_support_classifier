@@ -2,11 +2,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from db import get_local_session
 from models.facebook_bart_large_mnli import MnliModel
 from schemas.pydantic.request import RequestCreate, RequestResponse
-from uuid import uuid4
 
-from schemas.pydantic.postgres_config import PostgresSettings
-
-from db.init_tables import init_tables
 from db.requests import add_new_request, update_request, get_request
 
 sessionMaker = get_local_session()
@@ -24,12 +20,8 @@ def create_request(request: RequestCreate, background_tasks: BackgroundTasks) ->
     # TODO add doc string
 
     session = sessionMaker()
-
-    # make ui uuid ??
     req_id = add_new_request(request, session)
-
     background_tasks.add_task(process_ai_request, req_id, request)
-    
     return RequestResponse(id=req_id)
 
 # GET /requests/{id}

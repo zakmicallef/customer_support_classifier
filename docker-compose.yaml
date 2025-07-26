@@ -12,7 +12,7 @@ services:
 
   api:
     env_file:
-      - .env
+      - src/.env
     environment:
       - HF_HOME=/src/app/models
       - RUNNING_IN_DOCKER=1

@@ -5,6 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
+import schemas.db.customer_support_dataset
 import schemas.db.support_request
 from schemas.db import Base
 

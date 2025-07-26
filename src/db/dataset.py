@@ -1,5 +1,6 @@
 # TODO Move to a better place
 import pandas as pd
+from schemas.db.customer_support_dataset import Language, Priority, Queue, Tag, Ticket
 from util.load_configs import load_data_config
 from loguru import logger
 import math
@@ -41,17 +42,17 @@ def apply_clean_cs_tickets(df):
     '''
 
     # dropping german rows
-    german = df['language'] == 'de'
+    # german = df['language'] == 'de'
 
-    df = df[~german]
+    # df = df[~german]
 
-    # removing unwanted cols
-    columns = df.columns.tolist()
-    columns_keep = ['subject', 'body', 'priority', 'queue']
+    # # removing unwanted cols
+    # columns = df.columns.tolist()
+    # columns_keep = ['subject', 'body', 'priority', 'queue']
 
-    drop_columns = [c for c in columns if c not in columns_keep]
+    # drop_columns = [c for c in columns if c not in columns_keep]
 
-    df = df.drop(columns=drop_columns)
+    # df = df.drop(columns=drop_columns)
 
     # dropping rows that has an empty 
     df = df.dropna(how='any')
@@ -87,6 +88,46 @@ def get_dataset(train=False):
     logger.info(f'Data loaded for testing')
     return cs_tickets_df, texts
 
+def get_or_create(model, name, cache, session):
+    if pd.isna(name):
+        return None
+    if name not in cache:
+        obj = session.query(model).filter_by(name=name).first()
+        if not obj:
+            obj = model(name=name)
+            session.add(obj)
+            session.flush()
+        cache[name] = obj
+    return cache[name]
 
-def seed_database():
-    cs_tickets_df = get_cs_tickets_df()
+def seed_database_from_df(df, session):
+    priority_map = {}
+    queue_map = {}
+    language_map = {}
+    tag_map = {}
+
+    for _, row in df.iterrows():
+        priority = get_or_create(Priority, row['priority'], priority_map, session)
+        queue = get_or_create(Queue, row['queue'], queue_map, session)
+        language = get_or_create(Language, row['language'], language_map, session)
+
+        tags = []
+        for i in range(1, 9):
+            tag_col = f'tag_{i}'
+            tag_value = row.get(tag_col)
+            if pd.notna(tag_value):
+                tag = get_or_create(Tag, tag_value, tag_map, session)
+                tags.append(tag)
+
+        ticket = Ticket(
+            subject=row['subject'],
+            body=row['body'],
+            answer=row['answer'],
+            type=row['type'],
+            priority=priority,
+            queue=queue,
+            language=language,
+            tags=tags
+        )
+        session.add(ticket)
+    session.commit()
