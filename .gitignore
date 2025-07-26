@@ -8,7 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
-notes.txt
+notes.*
 *.csv#
 .env
 test_results
