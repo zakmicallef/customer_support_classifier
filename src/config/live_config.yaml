@@ -1,5 +1,5 @@
 priority_model_name: 'MNLI'
-queue_model_name: 'RAGLF'
+queue_model_name: 'MNLI'
 priority_stop: False
 confidence_on_low: 0.1
 confidence_on_medium: 0.5

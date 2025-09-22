@@ -32,8 +32,7 @@ class MnliModel(Model):
 
     def query(self, text_input) -> AiResponse:
         result = ZeroShotClassificationResult(**self.classifier(
-            text_input,
-            candidate_labels=self.candidate_labels
+            text_input
         ))
         return parse_results(result)
 
@@ -47,7 +46,7 @@ class MnliModel(Model):
 
     def classifier(self, text_inputs):
         classifier_results = self.classifier_(
-            text_inputs.tolist(),
+            [text_inputs],
             candidate_labels=self.candidate_labels
         )
-        return apply_parse_pre_label(pd.DataFrame(classifier_results))
+        return parse_results(classifier_results)
